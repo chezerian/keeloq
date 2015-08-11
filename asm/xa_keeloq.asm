@@ -34,7 +34,7 @@ _n3=$1133
 
 ;NLF offset 31 26 20  9  1
 ;            1  0  1  1  0
-
+ 
 jsr load_plain
 jsr load_key
 jsr load_nlf
