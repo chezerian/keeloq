@@ -1,18 +1,28 @@
-;key
-_k0=$1110
-_k1=$1111
-_k2=$1112
-_k3=$1113
-_k4=$1114
-_k5=$1115
-_k6=$1116
-_k7=$1117
+;breakpoints 
+; 000c init routines done
+; loop 2 location
+; 000f LDA _l0 
 
+; the order of the bytes doesnt matter but ive "reversed" them so they look like theyre in order
 ;plaintext
-_p0=$1100
-_p1=$1101
-_p2=$1102
-_p3=$1103
+_p0=$1103
+_p1=$1102
+_p2=$1101
+_p3=$1100
+
+;key
+_k0=$1117
+_k1=$1116
+_k2=$1115
+_k3=$1114
+_k4=$1113
+_k5=$1112
+_k6=$1111
+_k7=$1110
+
+;loop
+_l0=$1121
+_l1=$1120
 
 ; NLF magic number 
 _n0=$1130
@@ -35,16 +45,37 @@ _n3=$1133
 ;NLF offset 31 26 20  9  1
 ;            1  0  1  1  0
 
+;init routines
 jsr load_plain
 jsr load_key
 jsr load_nlf
+jsr load_loop
+inc _l1 ; shouldnt need this but the loop doesnt run 256 times enough
+;
+loop2:	jsr encrypt ; loop 2 is the inner loop
+	dec _l0
+	bne loop2 ; if mem is not zero then branch to loop 2
+	dec _l1;  otherwise decrement higher byte
+	bne loop1 ; if mem is not zero keep looping;
+brk ; otherwise break ie end of program
+ 
+
+loop1:	jsr encrypt ; need to run this when _l0 goes to 0
+	lda #$FF
+	sta _l0
+	clv ; unlike the example i found, i dont want to set the low byte to FF the 1st time
+	bvc loop2
+
+
+encrypt:
+;inside loop
 jsr bit0
 jsr bit16
 jsr key0
 jsr NLF_encrypt_bit
 jsr rotate_right_plain
 jsr rotate_right_key
-brk
+rts
 
 load_plain:
 ;load plaintext
@@ -80,6 +111,13 @@ lda #$10
 sta _k0 ; 
 rts
 
+;load loop
+load_loop:
+lda #$02 ; 512
+sta _l1
+lda #$10 ; 16, might need to be 0F
+sta _l0
+rts
 
 ;load NLF magic number note that n0 is actually the MSB of the NLF number, this is to get the
 ;correct byte when using the  register to offset the address
@@ -187,7 +225,6 @@ bvc right_NLF; jsr not working problems when returning
 rotate_right_plain:
 
 ;make sure the carry bit contains the result ($0200)
-lda $0200
 ror ; put results of XOR into carry, then thisft into plaintext
 ror _p3
 ror _p2
