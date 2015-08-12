@@ -34,16 +34,16 @@ _n3=$1133
 
 ;NLF offset 31 26 20  9  1
 ;            1  0  1  1  0
- 
+
 jsr load_plain
 jsr load_key
 jsr load_nlf
 jsr bit0
 jsr bit16
 jsr key0
-jsr rotate_right_key
 jsr NLF_encrypt_bit
 jsr rotate_right_plain
+jsr rotate_right_key
 brk
 
 load_plain:
@@ -63,21 +63,21 @@ rts
 ;load key
 load_key:
 lda #$FE 
-sta _k0 ; 
-lda #$DC 
-sta _k1 ; 
-lda #$BA 
-sta _k2 ; 
-lda #$98 
-sta _k3 ; 
-lda #$76 
-sta _k4 ; 
-lda #$54 
-sta _k5 ; 
-lda #$32 
-sta _k6 ; 
-lda #$10 
 sta _k7 ; 
+lda #$DC 
+sta _k6 ; 
+lda #$BA 
+sta _k5 ; 
+lda #$98 
+sta _k4 ; 
+lda #$76 
+sta _k3 ; 
+lda #$54 
+sta _k2 ; 
+lda #$32 
+sta _k1 ; 
+lda #$10 
+sta _k0 ; 
 rts
 
 
@@ -113,12 +113,11 @@ lda _k0
 and #$01 ; keep only bit 0 of key
 eor $0200 ; XOR with WIP 
 sta $0200
-;need subtourintes to shift left(decrypt) and right(encrypt) 32 bits(plain cipher NLF number) and 64 bits (key)
 rts;
 
 NLF_encrypt_bit:
 ;NLF function offset 31 26 20 9 1 
-lda #$00
+lda #$00 ; clear mem then store NLf offset
 sta $0201
 
 lda _p3 ; bit 31 is MSb of byte 3
@@ -132,8 +131,8 @@ rol ;27
 rol ; bit 26 now in carry flag
 rol $0201
 
-ldx $0201 ; store the first two bits in X register, used to select the NLF magic number byte
-stx $0202 ; probs not needed
+ldy $0201 ; store the first two bits in X register, used to select the NLF magic number byte
+sty $0202 ; probs not needed, only if y reg is changed
 
 lda _p2
 rol ; 23 
@@ -156,39 +155,39 @@ rol $0201
 
 lda $0201
 and #%00000111
-sta $0203 ; store last three bits in $0203
+tax ; load bit offset into X, will be used as loop decrement
 
-lda _n0,X ; load the correct NLF byte into A
+lda _n0,Y ; load the correct NLF byte into A
 
-ldx $0203 ; last three bits into X, going to be loop variable 
 jsr right_NLF
 ; carry flag now has result of NLF
 
-lda #$00
-rol ; move carry flag into A
+; not happening INVESTIGATION  
 eor $0200 ;  $0200 now has the result of XORing bits 0, 16, key and NLF
-
+sta $0200
 rts
 
 
 right_NLF:
 
-cpx #$00 ; if X==0 then the carry flag will be set 
+cpx #$00 ; if X==0 dont branch loop until the right NLF bit is in the LSbit of Acc 
 bne rotate_right_NLF ;
 ;execution after branch/loop
-ror ; one rotation is needed in order to store in carry flag
+and #$01 ; keep last bit of NLF byte
 rts
 
 rotate_right_NLF:
 
 ror ; rotate acc, contains NLF byte
 dex ; decrement X
-jsr right_NLF; 
-
+clv ; oVerflow not useful in this program, clear it to branch
+bvc right_NLF; jsr not working problems when returning
+;jsr right_NLF;this causes problems, not returning to the right place 
 
 rotate_right_plain:
 
 ;make sure the carry bit contains the result ($0200)
+ror ; put results of XOR into carry, then thisft into plaintext
 ror _p3
 ror _p2
 ror _p1
@@ -198,8 +197,8 @@ rts
 
 rotate_right_key:
 
-clc ;clear carry
-sta _k0
+clc ;clear carry INVESTIGATION
+lda _k0
 ror ;move bit 0 of key into carry
 ror _k7 ; rotate bit0 into byte 7 (bit 63)
 ror _k6

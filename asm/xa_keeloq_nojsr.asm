@@ -144,14 +144,10 @@ right_NLF:
 cpx #$00 ; dont know if this will work , if X==0 then the carry flag will be set 
 bne rotate_right_NLF ;
 ;execution after branch/loop
-ror ; one rotation is needed in order to store in carry flag
+and #$01 ; keep last bit of NLF byte
 
-
-; carry flag now has result of NLF
-
-lda #$00
-rol ; move carry flag into A
-eor $0200 ;  $0200 now has the result of XORing bits 0, 16, key and NLF
+eor $0200 ;  acc now has the result of XORing bits 0, 16, key and NLF
+sta $0200
 
 ;rotate_right_plain:
 ror
@@ -181,5 +177,6 @@ rotate_right_NLF:
 
 ror ; rotate acc, contains NLF byte
 dex ; decrement X
-jsr right_NLF; right_NLF is at 00ab but this jumps to 10ab
+clv ; oVerflow not useful in this program, clear it to branch
+bvc right_NLF; jsr not working problems when returning
 ; if loaded at $0000 then use  xa -bt 0 .asm
